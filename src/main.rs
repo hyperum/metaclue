@@ -4,9 +4,9 @@ mod data;
 mod parser;
 
 use data::Value;
-use parser::{Parser, Source};
+use parser::{Parser};
 
 fn main()
 {
-	println!("{:?}", Value::parse(Source("((obj) -one obj-two verb)")).unwrap());
+	println!("{:?}", Value::parse("((obj) -one obj-two verb)").unwrap());
 }

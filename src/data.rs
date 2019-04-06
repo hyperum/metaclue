@@ -1,13 +1,13 @@
-use crate::parser::{Parser, ParserError, Source};
+use crate::parser::{Parser, ParserError, consume, skip, collect};
 
 #[derive(Debug)]
 pub struct Tag (pub String);
 
 impl <'a> Parser<'a> for Tag
 {
-	fn parse (source: Source<'a>) -> Result<(Source<'a>, Self), ParserError<'a>>
+	fn parse (source: &'a str) -> Result<(&'a str, Self), ParserError<'a>>
 	{
-		let (source, sequence) = source.collect("letter", |c| c.is_alphabetic() || c == '-')?;
+		let (source, sequence) = collect(source, "letter", |c| c.is_alphabetic() || c == '-')?;
 		Ok((source, Self(String::from(sequence))))
 	}
 }
@@ -21,17 +21,17 @@ pub struct Invocation
 
 impl <'a> Parser<'a> for Invocation
 {
-	fn parse (source: Source<'a>) -> Result<(Source<'a>, Self), ParserError<'a>>
+	fn parse (source: &'a str) -> Result<(&'a str, Self), ParserError<'a>>
 	{
-		let mut source = source.consume("(")?;
+		let mut source = consume(source, "(")?;
 
 		let mut arguments: Vec<Value> = vec![];
 
 		loop
 		{
-			source = source.skip(' ');
+			source = skip(source, ' ');
 
-			if source.0.starts_with(')') {break;}
+			if source.starts_with(')') {break;}
 
 			let source_value = Value::parse(source)?;
 			source = source_value.0;
@@ -40,7 +40,7 @@ impl <'a> Parser<'a> for Invocation
 			arguments.push(value);
 		}
 
-		let source = source.skip(' ').consume(")")?;
+		let source = consume(skip(source, ' '), ")")?;
 
 		if arguments.is_empty()
 		{
@@ -62,7 +62,7 @@ pub enum Value
 
 impl <'a> Parser<'a> for Value
 {
-	fn parse (source: Source<'a>) -> Result<(Source<'a>, Self), ParserError<'a>>
+	fn parse (source: &'a str) -> Result<(&'a str, Self), ParserError<'a>>
 	{
 		if let Ok((source, tag)) = Tag::parse(source)
 		{
