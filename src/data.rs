@@ -15,8 +15,8 @@ impl <'a> Parser<'a> for Tag
 #[derive(Debug)]
 pub struct Invocation
 {
-	pub map: Tag,
-	pub arguments: Vec<Tag>,
+	pub map: Value,
+	pub arguments: Vec<Value>,
 }
 
 impl <'a> Parser<'a> for Invocation
@@ -25,7 +25,7 @@ impl <'a> Parser<'a> for Invocation
 	{
 		let mut source = source.consume("(")?;
 
-		let mut arguments: Vec<Tag> = vec![];
+		let mut arguments: Vec<Value> = vec![];
 
 		loop
 		{
@@ -33,11 +33,11 @@ impl <'a> Parser<'a> for Invocation
 
 			if source.0.starts_with(')') {break;}
 
-			let source_tag = Tag::parse(source)?;
-			source = source_tag.0;
-			let tag = source_tag.1;
+			let source_value = Value::parse(source)?;
+			source = source_value.0;
+			let value = source_value.1;
 
-			arguments.push(tag);
+			arguments.push(value);
 		}
 
 		let source = source.skip(' ').consume(")")?;
@@ -49,6 +49,32 @@ impl <'a> Parser<'a> for Invocation
 		else
 		{
 			Ok((source, Invocation{map: arguments.pop().unwrap(), arguments}))
+		}
+	}
+}
+
+#[derive(Debug)]
+pub enum Value
+{
+	Tag(Tag),
+	Invocation(Box<Invocation>),
+}
+
+impl <'a> Parser<'a> for Value
+{
+	fn parse (source: Source<'a>) -> Result<(Source<'a>, Self), ParserError<'a>>
+	{
+		if let Ok((source, tag)) = Tag::parse(source)
+		{
+			Ok((source, Value::Tag(tag)))
+		}
+		else if let Ok((source, invocation)) = Invocation::parse(source)
+		{
+			Ok((source, Value::Invocation(Box::new(invocation))))
+		}
+		else
+		{
+			Err(ParserError::ExpectedElement{element: "value", source})
 		}
 	}
 }

@@ -1,10 +1,12 @@
+#![feature(pattern)]
+
 mod data;
 mod parser;
 
-use data::Invocation;
+use data::Value;
 use parser::{Parser, Source};
 
 fn main()
 {
-	println!("{:?}", Invocation::parse(Source("(obj-one obj-two verb)")).unwrap());
+	println!("{:?}", Value::parse(Source("((obj) -one obj-two verb)")).unwrap());
 }

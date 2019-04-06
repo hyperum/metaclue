@@ -10,7 +10,7 @@ pub trait Parser <'a>: Sized
 	fn parse (input: Source<'a>) -> Result<(Source<'a>, Self), ParserError<'a>>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Source <'a> (pub &'a str);
 
 impl <'a> Source<'a>
@@ -34,26 +34,21 @@ impl <'a> Source<'a>
 
 	pub fn collect <Indicator: Fn(char) -> bool>(self, element: &'static str, indicator: Indicator) -> Result<(Self, &'a str), ParserError<'a>>
 	{
-		let mut chars = self.0.chars();
-
-		loop
+		for (i, token) in self.0.chars().enumerate()
 		{
-			let rest = chars.as_str();
-			match chars.next()
+			if !indicator(token)
 			{
-				Some(c) if indicator(c) => {},
-				_ =>
+				if i != 0
 				{
-					if rest.len() != self.0.len()
-					{
-						return Ok((Self(rest), &self.0[..self.0.len() - rest.len()]));
-					}
-					else
-					{
-						return Err(ParserError::ExpectedElement{element, source: self});
-					}
+					return Ok((Self(&self.0[i..]), &self.0[..i]));
+				}
+				else
+				{
+					break;
 				}
 			}
 		}
+
+		Err(ParserError::ExpectedElement{element, source: self})
 	}
 }
