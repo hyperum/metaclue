@@ -1,4 +1,5 @@
 #![feature(pattern)]
+#![feature(bind_by_move_pattern_guards)]
 
 mod data;
 mod parser;
@@ -8,5 +9,5 @@ use parser::{Parser};
 
 fn main()
 {
-	println!("{:?}", Value::parse("((obj) -one obj-two verb)").unwrap());
+	println!("{:?}", Value::parse("(() -one obj-two verb)").unwrap());
 }

@@ -1,13 +1,13 @@
-use crate::parser::{Parser, ParserError, consume, skip, collect};
+use crate::parser::{Parser, ParserError, ParserResult, OptionalParserResult, consume, skip, collect};
 
 #[derive(Debug)]
 pub struct Tag (pub String);
 
 impl <'a> Parser<'a> for Tag
 {
-	fn parse (source: &'a str) -> Result<(&'a str, Self), ParserError<'a>>
+	fn parse (source: &'a str) -> ParserResult<'a, Self>
 	{
-		let (source, sequence) = collect(source, "letter", |c| c.is_alphabetic() || c == '-')?;
+		let (source, sequence) = collect(source, "letter or dash", |c| c.is_alphabetic() || c == '-').or(Err(ParserError::None))?;
 		Ok((source, Self(String::from(sequence))))
 	}
 }
@@ -21,9 +21,10 @@ pub struct Invocation
 
 impl <'a> Parser<'a> for Invocation
 {
-	fn parse (source: &'a str) -> Result<(&'a str, Self), ParserError<'a>>
+	fn parse (source: &'a str) -> ParserResult<'a, Self>
 	{
-		let mut source = consume(source, "(")?;
+		let original_source = source;
+		let mut source = consume(source, "(").or(Err(ParserError::None))?;
 
 		let mut arguments: Vec<Value> = vec![];
 
@@ -44,7 +45,7 @@ impl <'a> Parser<'a> for Invocation
 
 		if arguments.is_empty()
 		{
-			Err(ParserError::ExpectedElement{element: "nonempty invocation", source})
+			Err(ParserError::ExpectedElement{element: "nonempty invocation", source: original_source})
 		}
 		else
 		{
@@ -62,14 +63,16 @@ pub enum Value
 
 impl <'a> Parser<'a> for Value
 {
-	fn parse (source: &'a str) -> Result<(&'a str, Self), ParserError<'a>>
+	fn parse (source: &'a str) -> ParserResult<'a, Self>
 	{
-		if let Ok((source, tag)) = Tag::parse(source)
+		if let Some(result) = Tag::parse(source).as_option()
 		{
+			let (source, tag) = result?;
 			Ok((source, Value::Tag(tag)))
 		}
-		else if let Ok((source, invocation)) = Invocation::parse(source)
+		else if let Some(result) = Invocation::parse(source).as_option()
 		{
+			let (source, invocation) = result?;
 			Ok((source, Value::Invocation(Box::new(invocation))))
 		}
 		else
