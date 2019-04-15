@@ -2,13 +2,6 @@ use crate::parser::{Parse, ParseError, ParseResult};
 use crate::lexer::{Lexer, Lexeme};
 
 #[derive(Debug)]
-pub struct Invocation
-{
-	pub map: Value,
-	pub arguments: Vec<Value>,
-}
-
-#[derive(Debug)]
 pub enum Value
 {
 	None,
