@@ -1,11 +1,11 @@
 #![feature(try_from)]
 #![feature(type_alias_enum_variants)]
 
-mod data;
+mod value;
 mod parser;
 mod lexer;
 
-use data::Value;
+use value::Value;
 use parser::Parse;
 use lexer::Lexer;
 

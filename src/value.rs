@@ -4,7 +4,6 @@ use crate::lexer::{Lexer, Lexeme};
 #[derive(Debug)]
 pub enum Value
 {
-	None,
 	Tag(String),
 	Invocation{map: Box<Self>, arguments: Vec<Self>},
 }
@@ -23,9 +22,9 @@ impl Parse for Value
 			OpenInvocation =>
 			{
 				lexer.advance();
-				let mut arguments: Vec<Value> = Vec::new();
-				let mut map: Value = Value::None;
-				let mut has_found_map_yet = false;
+				let mut arguments = Vec::<Value>::new();
+				let mut map = Option::<Value>::None;
+				
 				while lexer.lexeme != CloseInvocation && lexer.lexeme != None
 				{
 					arguments.push(Value::parse(lexer)?); //TODO: handle error "properly" -> bubble up to expression level
@@ -33,13 +32,12 @@ impl Parse for Value
 
 					if lexer.lexeme == MapSuffix
 					{
-						if has_found_map_yet
+						if map.is_some()
 						{
 							return Err(ParseError::ExpectedElement{element: "two maps designated in invocation", slice: lexer.slice().to_string()});
 						}
 
-						map = arguments.pop().unwrap();
-						has_found_map_yet = true;
+						map = Some(arguments.pop().unwrap());
 						lexer.advance();
 					}
 				}
@@ -48,16 +46,14 @@ impl Parse for Value
 				{
 					return Err(ParseError::ExpectedElement{element: "nonempty invocation", slice: lexer.slice().to_string()});
 				}
-				if !has_found_map_yet
+				else
 				{
-					map = arguments.pop().unwrap(); //TODO: handle empty invocation
+					return Ok(Value::Invocation{map: Box::new(map.unwrap_or(arguments.pop().unwrap())), arguments})
 				}
-
-				Ok(Value::Invocation{map: Box::new(map), arguments})
 			}
 			_ =>
 			{
-				Err(ParseError::ExpectedElement{element: "invocation or tagged value", slice: lexer.slice().to_string()})
+				return Err(ParseError::ExpectedElement{element: "invocation or tagged value", slice: lexer.slice().to_string()})
 			},
 		}
 	}
