@@ -1,16 +1,5 @@
-use crate::parser::{Parser, ParserError, ParserResult, OptionalParserResult, consume, skip, collect};
-
-#[derive(Debug)]
-pub struct Tag (pub String);
-
-impl <'a> Parser<'a> for Tag
-{
-	fn parse (source: &'a str) -> ParserResult<'a, Self>
-	{
-		let (source, sequence) = collect(source, "letter or dash", |c| c.is_alphabetic() || c == '-').or(Err(ParserError::None))?;
-		Ok((source, Self(String::from(sequence))))
-	}
-}
+use crate::parser::{Parse, ParseError, ParseResult};
+use crate::lexer::{Lexer, Lexeme};
 
 #[derive(Debug)]
 pub struct Invocation
@@ -19,65 +8,64 @@ pub struct Invocation
 	pub arguments: Vec<Value>,
 }
 
-impl <'a> Parser<'a> for Invocation
-{
-	fn parse (source: &'a str) -> ParserResult<'a, Self>
-	{
-		let original_source = source;
-		let mut source = consume(source, "(").or(Err(ParserError::None))?;
-
-		let mut arguments: Vec<Value> = vec![];
-
-		loop
-		{
-			source = skip(source, ' ');
-
-			if source.starts_with(')') {break;}
-
-			let source_value = Value::parse(source)?;
-			source = source_value.0;
-			let value = source_value.1;
-
-			arguments.push(value);
-		}
-
-		let source = consume(skip(source, ' '), ")")?;
-
-		if arguments.is_empty()
-		{
-			Err(ParserError::ExpectedElement{element: "nonempty invocation", source: original_source})
-		}
-		else
-		{
-			Ok((source, Invocation{map: arguments.pop().unwrap(), arguments}))
-		}
-	}
-}
-
 #[derive(Debug)]
 pub enum Value
 {
-	Tag(Tag),
-	Invocation(Box<Invocation>),
+	None,
+	Tag(String),
+	Invocation{map: Box<Self>, arguments: Vec<Self>},
 }
 
-impl <'a> Parser<'a> for Value
+impl Parse for Value
 {
-	fn parse (source: &'a str) -> ParserResult<'a, Self>
+	fn parse (lexer: &mut Lexer) -> ParseResult<Self>
 	{
-		if let Some(result) = Tag::parse(source).as_option()
+		use Lexeme::*;
+		match lexer.lexeme
 		{
-			let (source, tag) = result?;
-			Ok((source, Value::Tag(tag)))
-		}
-		else if let Some(result) = Invocation::parse(source).as_option()
-		{
-			let (source, invocation) = result?;
-			Ok((source, Value::Invocation(Box::new(invocation))))
-		}
-		else
-		{
-			Err(ParserError::ExpectedElement{element: "value", source})
+			Tag =>
+			{
+				Ok(Self::Tag(String::from(lexer.slice())))
+			},
+			OpenInvocation =>
+			{
+				lexer.advance();
+				let mut arguments: Vec<Value> = Vec::new();
+				let mut map: Value = Value::None;
+				let mut has_found_map_yet = false;
+				while lexer.lexeme != CloseInvocation && lexer.lexeme != None
+				{
+					arguments.push(Value::parse(lexer)?); //TODO: handle error "properly" -> bubble up to expression level
+					lexer.advance();
+
+					if lexer.lexeme == MapSuffix
+					{
+						if has_found_map_yet
+						{
+							return Err(ParseError::ExpectedElement{element: "two maps designated in invocation", slice: lexer.slice().to_string()});
+						}
+
+						map = arguments.pop().unwrap();
+						has_found_map_yet = true;
+						lexer.advance();
+					}
+				}
+
+				if arguments.len() == 0
+				{
+					return Err(ParseError::ExpectedElement{element: "nonempty invocation", slice: lexer.slice().to_string()});
+				}
+				if !has_found_map_yet
+				{
+					map = arguments.pop().unwrap(); //TODO: handle empty invocation
+				}
+
+				Ok(Value::Invocation{map: Box::new(map), arguments})
+			}
+			_ =>
+			{
+				Err(ParseError::ExpectedElement{element: "invocation or tagged value", slice: lexer.slice().to_string()})
+			},
 		}
 	}
 }
