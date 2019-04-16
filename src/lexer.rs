@@ -261,11 +261,13 @@ impl <'a> Lexer<'a>
 	pub fn skip_newlines (&mut self) -> usize
 	{
 		let mut count = 0;
+
 		while Some(&b'\n') == self.source.get(self.range.end)
 		{
 			self.range.end += 1;
 			count += 1;
 		}
+		
 		return count;
 	}
 }

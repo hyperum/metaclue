@@ -2,11 +2,10 @@
 #![feature(type_alias_enum_variants)]
 
 mod value;
-mod parser;
+mod parse;
 mod lexer;
 
 use value::Value;
-use parser::Parse;
 use lexer::Lexer;
 
 fn main()

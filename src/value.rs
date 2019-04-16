@@ -1,4 +1,4 @@
-use crate::parser::{Parse, ParseError, ParseResult};
+use crate::parse::{ParseError, ParseResult};
 use crate::lexer::{Lexer, Lexeme, LogicalOperator};
 use std::convert::TryFrom;
 
@@ -15,12 +15,15 @@ impl Value
 	fn inner_parse (lexer: &mut Lexer) -> ParseResult<Self>
 	{
 		use Lexeme::*;
+		
 		match lexer.lexeme
 		{
 			Tag =>
 			{
 				let tag = Self::Tag(String::from(lexer.slice()));
+
 				lexer.advance();
+
 				return Ok(tag);
 			},
 			OpenInvocation =>
@@ -40,8 +43,8 @@ impl Value
 							return Err(ParseError::ExpectedElement{element: "two maps designated in invocation", slice: lexer.slice().to_string()});
 						}
 
-						map = Some(values.pop().unwrap());
 						lexer.advance();
+						map = Some(values.pop().unwrap());
 					}
 				}
 
@@ -52,6 +55,7 @@ impl Value
 				else
 				{
 					lexer.advance();
+					
 					return Ok(Value::Invocation{map: Box::new(map.unwrap_or_else(|| values.pop().unwrap())), values})
 				}
 			},
@@ -84,6 +88,7 @@ impl Value
 						{
 							return Err(ParseError::ExpectedElement{element: "found different operator in same operation", slice: lexer.slice().to_string()});
 						}
+
 						lexer.advance()
 					}
 					else
