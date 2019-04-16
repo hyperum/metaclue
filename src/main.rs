@@ -11,7 +11,7 @@ use lexer::Lexer;
 
 fn main()
 {
-	let mut lexer = Lexer::new("((test1 test2! te3st test4))");
+	let mut lexer = Lexer::new("(i eat! potatoes) & (you eat! potatoes)");
 
-	println!("{:?}", Value::parse(&mut lexer))
+	println!("{:?}, {:?}", Value::parse(&mut lexer), lexer.lexeme);
 }

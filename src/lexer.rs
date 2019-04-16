@@ -6,7 +6,7 @@ pub enum Lexeme
 	Error,
 
 	Tag,
-
+	
 	OpenInvocation,
 	OpenType,
 	OpenValue,
@@ -16,17 +16,19 @@ pub enum Lexeme
 	CloseValue,
 
 	Negation,
+
+	Biconditional,
+	ExclusiveDisjunction,
 	Conjunction,
 	Disjunction,
+
 	AlternativeDenial,
 	JointDenial,
 	Implication,
 	Nonimplication,
 	ConverseImplication,
 	ConverseNonimplication,
-	Biconditional,
-	ExclusiveDisjunction,
-
+	
 	To,
 	In,
 	Is,
@@ -36,20 +38,30 @@ pub enum Lexeme
 }
 
 #[repr(u8)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LogicalOperator
 {
 	Negation = Lexeme::Negation as u8,
+
+	Biconditional = Lexeme::Biconditional as u8,
+	ExclusiveDisjunction = Lexeme::ExclusiveDisjunction as u8,
 	Conjunction = Lexeme::Conjunction as u8,
 	Disjunction = Lexeme::Disjunction as u8,
+
 	AlternativeDenial = Lexeme::AlternativeDenial as u8,
 	JointDenial = Lexeme::JointDenial as u8,
 	Implication = Lexeme::Implication as u8,
 	Nonimplication = Lexeme::Nonimplication as u8,
 	ConverseImplication = Lexeme::ConverseImplication as u8,
 	ConverseNonimplication = Lexeme::ConverseNonimplication as u8,
-	Biconditional = Lexeme::Biconditional as u8,
-	ExclusiveDisjunction = Lexeme::ExclusiveDisjunction as u8,
+}
+
+impl LogicalOperator
+{
+	pub fn is_associative (&self) -> bool
+	{
+		self >= &Self::Biconditional && self <= &Self::Disjunction
+	}
 }
 
 use std::convert::TryFrom;
@@ -58,7 +70,7 @@ impl TryFrom<Lexeme> for LogicalOperator
 	type Error = ();
 	fn try_from (lexeme: Lexeme) -> Result<Self, Self::Error>
 	{
-		if lexeme >= Lexeme::Negation && lexeme <= Lexeme::ExclusiveDisjunction
+		if lexeme >= Lexeme::Negation && lexeme <= Lexeme::ConverseNonimplication
 		{
 			return Ok(unsafe {std::mem::transmute(lexeme)});
 		}

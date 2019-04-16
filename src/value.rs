@@ -1,34 +1,37 @@
 use crate::parser::{Parse, ParseError, ParseResult};
-use crate::lexer::{Lexer, Lexeme};
+use crate::lexer::{Lexer, Lexeme, LogicalOperator};
+use std::convert::TryFrom;
 
 #[derive(Debug)]
 pub enum Value
 {
 	Tag(String),
-	Invocation{map: Box<Self>, arguments: Vec<Self>},
+	Invocation{map: Box<Self>, values: Vec<Self>},
+	Operation{operator: LogicalOperator, values: Vec<Self>},
 }
 
-impl Parse for Value
+impl Value
 {
-	fn parse (lexer: &mut Lexer) -> ParseResult<Self>
+	fn inner_parse (lexer: &mut Lexer) -> ParseResult<Self>
 	{
 		use Lexeme::*;
 		match lexer.lexeme
 		{
 			Tag =>
 			{
-				Ok(Self::Tag(String::from(lexer.slice())))
+				let tag = Self::Tag(String::from(lexer.slice()));
+				lexer.advance();
+				return Ok(tag);
 			},
 			OpenInvocation =>
 			{
 				lexer.advance();
-				let mut arguments = Vec::<Value>::new();
+				let mut values = Vec::<Value>::new();
 				let mut map = Option::<Value>::None;
 				
 				while lexer.lexeme != CloseInvocation && lexer.lexeme != None
 				{
-					arguments.push(Value::parse(lexer)?); //TODO: handle error "properly" -> bubble up to expression level
-					lexer.advance();
+					values.push(Self::inner_parse(lexer)?);
 
 					if lexer.lexeme == MapSuffix
 					{
@@ -37,24 +40,66 @@ impl Parse for Value
 							return Err(ParseError::ExpectedElement{element: "two maps designated in invocation", slice: lexer.slice().to_string()});
 						}
 
-						map = Some(arguments.pop().unwrap());
+						map = Some(values.pop().unwrap());
 						lexer.advance();
 					}
 				}
 
-				if arguments.len() == 0
+				if values.len() == 0
 				{
 					return Err(ParseError::ExpectedElement{element: "nonempty invocation", slice: lexer.slice().to_string()});
 				}
 				else
 				{
-					return Ok(Value::Invocation{map: Box::new(map.unwrap_or(arguments.pop().unwrap())), arguments})
+					lexer.advance();
+					return Ok(Value::Invocation{map: Box::new(map.unwrap_or_else(|| values.pop().unwrap())), values})
 				}
-			}
+			},
 			_ =>
 			{
-				return Err(ParseError::ExpectedElement{element: "invocation or tagged value", slice: lexer.slice().to_string()})
+				return Err(ParseError::ExpectedElement{element: "invocation or tagged value", slice: lexer.slice().to_string()});
 			},
+		};
+	}
+	pub fn parse (lexer: &mut Lexer) -> ParseResult<Self>
+	{
+		let value = Self::inner_parse(lexer)?;
+
+		if let Ok(operator) = LogicalOperator::try_from(lexer.lexeme)
+		{
+			let mut values = Vec::new();
+			values.push(value);
+
+			lexer.advance();
+
+			values.push(Self::inner_parse(lexer)?);
+
+			if operator.is_associative()
+			{
+				loop
+				{
+					if let Ok(next_operator) = LogicalOperator::try_from(lexer.lexeme)
+					{
+						if next_operator != operator
+						{
+							return Err(ParseError::ExpectedElement{element: "found different operator in same operation", slice: lexer.slice().to_string()});
+						}
+						lexer.advance()
+					}
+					else
+					{
+						break;
+					}
+
+					values.push(Self::inner_parse(lexer)?);
+				}
+				
+				lexer.advance();
+			}
+			
+			return Ok(Value::Operation{operator, values});
 		}
+		
+		Ok(value)
 	}
 }
