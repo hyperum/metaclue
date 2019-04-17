@@ -10,7 +10,7 @@ use lexer::Lexer;
 
 fn main()
 {
-	let mut lexer = Lexer::new("(i eat! potatoes) & (you eat! potatoes)");
+	let mut lexer = Lexer::new("(every! {roman & soldier})");
 
 	println!("{:?}, {:?}", Value::parse(&mut lexer), lexer.lexeme);
 }

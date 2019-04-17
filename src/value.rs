@@ -5,9 +5,9 @@ use std::convert::TryFrom;
 #[derive(Debug)]
 pub enum Value
 {
-	Tag(String),
-	Invocation{map: Box<Self>, values: Vec<Self>},
-	Operation{operator: LogicalOperator, values: Vec<Self>},
+	Tag (String),
+	Invocation {map: Box<Self>, values: Vec<Self>},
+	Operation {operator: LogicalOperator, values: Vec<Self>},
 }
 
 impl Value
@@ -15,7 +15,7 @@ impl Value
 	fn inner_parse (lexer: &mut Lexer) -> ParseResult<Self>
 	{
 		use Lexeme::*;
-		
+
 		match lexer.lexeme
 		{
 			Tag =>
@@ -32,7 +32,7 @@ impl Value
 				let mut values = Vec::<Value>::new();
 				let mut map = Option::<Value>::None;
 				
-				while lexer.lexeme != CloseInvocation && lexer.lexeme != None
+				while lexer.lexeme != CloseInvocation
 				{
 					values.push(Self::inner_parse(lexer)?);
 
@@ -58,6 +58,49 @@ impl Value
 					
 					return Ok(Value::Invocation{map: Box::new(map.unwrap_or_else(|| values.pop().unwrap())), values})
 				}
+			},
+			OpenValue =>
+			{
+				lexer.advance();
+				let value = Self::inner_parse(lexer)?;
+
+				if let Ok(operator) = LogicalOperator::try_from(lexer.lexeme)
+				{
+					let mut values = Vec::new();
+					values.push(value);
+
+					lexer.advance();
+
+					values.push(Self::inner_parse(lexer)?);
+
+					if operator.is_associative()
+					{
+						while lexer.lexeme != Lexeme::CloseValue
+						{
+							if let Ok(next_operator) = LogicalOperator::try_from(lexer.lexeme)
+							{
+								if next_operator != operator
+								{
+									return Err(ParseError::ExpectedElement{element: "found different operator in same operation", slice: lexer.slice().to_string()});
+								}
+							}
+							else
+							{
+								break;
+							}
+
+							lexer.advance();
+							
+							values.push(Self::inner_parse(lexer)?);
+						}
+					}
+					
+					lexer.advance();
+
+					return Ok(Value::Operation{operator, values});
+				}
+				
+				return Ok(value);
 			},
 			_ =>
 			{
@@ -104,7 +147,7 @@ impl Value
 			
 			return Ok(Value::Operation{operator, values});
 		}
-		
+
 		Ok(value)
 	}
 }
