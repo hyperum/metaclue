@@ -1,5 +1,5 @@
 use crate::parse::{ParseError, ParseResult};
-use crate::lexer::{Lexer, Lexeme, LogicalOperator};
+use crate::lexer::{Lexer, Lexeme, BinaryOperator};
 use std::convert::TryFrom;
 
 #[derive(Debug)]
@@ -7,7 +7,7 @@ pub enum Value
 {
 	Tag (String),
 	Invocation {map: Box<Self>, values: Vec<Self>},
-	Operation {operator: LogicalOperator, values: Vec<Self>},
+	Operation {operator: BinaryOperator, values: Vec<Self>},
 }
 
 impl Value
@@ -64,7 +64,7 @@ impl Value
 				lexer.advance();
 				let value = Self::inner_parse(lexer)?;
 
-				if let Ok(operator) = LogicalOperator::try_from(lexer.lexeme)
+				if let Lexeme::BinaryOperator(operator) = lexer.lexeme
 				{
 					let mut values = Vec::new();
 					values.push(value);
@@ -77,7 +77,7 @@ impl Value
 					{
 						while lexer.lexeme != Lexeme::CloseValue
 						{
-							if let Ok(next_operator) = LogicalOperator::try_from(lexer.lexeme)
+							if let Lexeme::BinaryOperator(next_operator) = lexer.lexeme
 							{
 								if next_operator != operator
 								{
@@ -112,7 +112,7 @@ impl Value
 	{
 		let value = Self::inner_parse(lexer)?;
 
-		if let Ok(operator) = LogicalOperator::try_from(lexer.lexeme)
+		if let Lexeme::BinaryOperator(operator) = lexer.lexeme
 		{
 			let mut values = Vec::new();
 			values.push(value);
@@ -125,7 +125,7 @@ impl Value
 			{
 				loop
 				{
-					if let Ok(next_operator) = LogicalOperator::try_from(lexer.lexeme)
+					if let Lexeme::BinaryOperator(next_operator) = lexer.lexeme
 					{
 						if next_operator != operator
 						{

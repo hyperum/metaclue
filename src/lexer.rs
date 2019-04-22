@@ -1,8 +1,8 @@
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Lexeme
 {
-	None = 0,
+	None,
 	Error,
 
 	Tag,
@@ -17,6 +17,20 @@ pub enum Lexeme
 
 	Negation,
 
+	BinaryOperator (BinaryOperator),
+
+	To,
+	In,
+	Is,
+
+	MapSuffix,
+	Newline,
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum BinaryOperator
+{
 	Biconditional,
 	ExclusiveDisjunction,
 	Conjunction,
@@ -28,59 +42,15 @@ pub enum Lexeme
 	Nonimplication,
 	ConverseImplication,
 	ConverseNonimplication,
-	
-	To,
-	In,
-	Is,
-
-	MapSuffix,
-	Newline,
 }
 
-#[repr(u8)]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum LogicalOperator
-{
-	Negation = Lexeme::Negation as u8,
-
-	Biconditional = Lexeme::Biconditional as u8,
-	ExclusiveDisjunction = Lexeme::ExclusiveDisjunction as u8,
-	Conjunction = Lexeme::Conjunction as u8,
-	Disjunction = Lexeme::Disjunction as u8,
-
-	AlternativeDenial = Lexeme::AlternativeDenial as u8,
-	JointDenial = Lexeme::JointDenial as u8,
-	Implication = Lexeme::Implication as u8,
-	Nonimplication = Lexeme::Nonimplication as u8,
-	ConverseImplication = Lexeme::ConverseImplication as u8,
-	ConverseNonimplication = Lexeme::ConverseNonimplication as u8,
-}
-
-impl LogicalOperator
+impl BinaryOperator
 {
 	pub fn is_associative (&self) -> bool
 	{
 		self >= &Self::Biconditional && self <= &Self::Disjunction
 	}
 }
-
-use std::convert::TryFrom;
-impl TryFrom<Lexeme> for LogicalOperator
-{
-	type Error = ();
-	fn try_from (lexeme: Lexeme) -> Result<Self, Self::Error>
-	{
-		if lexeme >= Lexeme::Negation && lexeme <= Lexeme::ConverseNonimplication
-		{
-			return Ok(unsafe {std::mem::transmute(lexeme)});
-		}
-		else
-		{
-			return Err(());
-		}
-	}
-}
-
 
 use std::ops::Range;
 
@@ -108,6 +78,7 @@ impl <'a> Lexer<'a>
 	pub fn advance (&mut self)
 	{
 		use Lexeme::*;
+		use self::BinaryOperator::*;
 
 		if self.range.end == self.source.len()
 		{
@@ -137,20 +108,20 @@ impl <'a> Lexer<'a>
 							b'&' =>
 							{
 								self.range.end += 1;
-								AlternativeDenial
+								BinaryOperator(AlternativeDenial)
 							},
 							b'/' =>
 							{
 								self.range.end += 1;
-								JointDenial
+								BinaryOperator(JointDenial)
 							},
 							_ => Negation
 						}
 					}
 					else {Negation}
 				},
-				b'&' => Conjunction,
-				b'/' => Disjunction,
+				b'&' => BinaryOperator(Conjunction),
+				b'/' => BinaryOperator(Disjunction),
 				b'(' => OpenInvocation,
 				b'[' => OpenType,
 				b'{' => OpenValue,
@@ -178,12 +149,12 @@ impl <'a> Lexer<'a>
 							b'>' =>
 							{
 								self.range.end += 1;
-								Implication
+								BinaryOperator(Implication)
 							},
 							b'<' =>
 							{
 								self.range.end += 1;
-								ConverseNonimplication
+								BinaryOperator(ConverseNonimplication)
 							},
 							_ =>
 							{
@@ -210,12 +181,12 @@ impl <'a> Lexer<'a>
 							b'-' =>
 							{
 								self.range.end += 1;
-								ConverseImplication
+								BinaryOperator(ConverseImplication)
 							},
 							b'>' =>
 							{
 								self.range.end += 1;
-								Biconditional
+								BinaryOperator(Biconditional)
 							},
 							_ => Error,
 						}
@@ -231,12 +202,12 @@ impl <'a> Lexer<'a>
 							b'-' =>
 							{
 								self.range.end += 1;
-								Nonimplication
+								BinaryOperator(Nonimplication)
 							},
 							b'<' =>
 							{
 								self.range.end += 1;
-								ExclusiveDisjunction
+								BinaryOperator(ExclusiveDisjunction)
 							},
 							_ => Error,
 						}
