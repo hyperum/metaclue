@@ -1,6 +1,5 @@
 use crate::parse::{ParseError, ParseResult};
 use crate::lexer::{Lexer, Lexeme, BinaryOperator};
-use std::convert::TryFrom;
 
 #[derive(Debug)]
 pub enum Value

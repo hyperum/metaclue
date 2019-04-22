@@ -1,4 +1,3 @@
-#![feature(try_from)]
 #![feature(type_alias_enum_variants)]
 
 mod value;

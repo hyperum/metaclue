@@ -122,6 +122,8 @@ impl <'a> Lexer<'a>
 				},
 				b'&' => BinaryOperator(Conjunction),
 				b'/' => BinaryOperator(Disjunction),
+				b':' => In,
+				b'=' => Is,
 				b'(' => OpenInvocation,
 				b'[' => OpenType,
 				b'{' => OpenValue,
@@ -139,6 +141,24 @@ impl <'a> Lexer<'a>
 						else {break;}
 					}
 					Tag
+				}
+				b'+' =>
+				{
+					if let Some(peek) = self.source.get(self.range.end)
+					{
+						if b'>' == *peek
+						{
+							To
+						}
+						else
+						{
+							Error
+						}
+					}
+					else
+					{
+						Error
+					}
 				}
 				b'-' =>
 				{
