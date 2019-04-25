@@ -9,7 +9,7 @@ use lexer::Lexer;
 
 fn main()
 {
-	let mut lexer = Lexer::new("(every! {roman & soldier})");
+	let mut lexer = Lexer::new("me & (every! {roman & soldier})");
 
 	println!("{:?}, {:?}", Value::parse(&mut lexer), lexer.lexeme);
 }

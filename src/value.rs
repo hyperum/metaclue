@@ -1,3 +1,8 @@
+mod operation;
+pub use operation::Operation;
+mod invocation;
+pub use invocation::Invocation;
+
 use crate::parse::{ParseError, ParseResult};
 use crate::lexer::{Lexer, Lexeme, BinaryOperator};
 
@@ -5,8 +10,8 @@ use crate::lexer::{Lexer, Lexeme, BinaryOperator};
 pub enum Value
 {
 	Tag (String),
-	Invocation {map: Box<Self>, values: Vec<Self>},
-	Operation {operator: BinaryOperator, values: Vec<Self>},
+	Invocation (Invocation),
+	Operation (Operation),
 }
 
 impl Value
@@ -28,35 +33,8 @@ impl Value
 			OpenInvocation =>
 			{
 				lexer.advance();
-				let mut values = Vec::<Value>::new();
-				let mut map = Option::<Value>::None;
 				
-				while lexer.lexeme != CloseInvocation
-				{
-					values.push(Self::inner_parse(lexer)?);
-
-					if lexer.lexeme == MapSuffix
-					{
-						if map.is_some()
-						{
-							return Err(ParseError::ExpectedElement{element: "two maps designated in invocation", slice: lexer.slice().to_string()});
-						}
-
-						lexer.advance();
-						map = Some(values.pop().unwrap());
-					}
-				}
-
-				if values.len() == 0
-				{
-					return Err(ParseError::ExpectedElement{element: "nonempty invocation", slice: lexer.slice().to_string()});
-				}
-				else
-				{
-					lexer.advance();
-					
-					return Ok(Value::Invocation{map: Box::new(map.unwrap_or_else(|| values.pop().unwrap())), values})
-				}
+				return Ok(Value::Invocation(Invocation::parse(lexer)?));
 			},
 			OpenValue =>
 			{
@@ -65,38 +43,7 @@ impl Value
 
 				if let Lexeme::BinaryOperator(operator) = lexer.lexeme
 				{
-					let mut values = Vec::new();
-					values.push(value);
-
-					lexer.advance();
-
-					values.push(Self::inner_parse(lexer)?);
-
-					if operator.is_associative()
-					{
-						while lexer.lexeme != Lexeme::CloseValue
-						{
-							if let Lexeme::BinaryOperator(next_operator) = lexer.lexeme
-							{
-								if next_operator != operator
-								{
-									return Err(ParseError::ExpectedElement{element: "found different operator in same operation", slice: lexer.slice().to_string()});
-								}
-							}
-							else
-							{
-								break;
-							}
-
-							lexer.advance();
-							
-							values.push(Self::inner_parse(lexer)?);
-						}
-					}
-					
-					lexer.advance();
-
-					return Ok(Value::Operation{operator, values});
+					return Ok(Value::Operation(Operation::parse_after(lexer, value, operator, true)?));
 				}
 				
 				return Ok(value);
@@ -113,38 +60,7 @@ impl Value
 
 		if let Lexeme::BinaryOperator(operator) = lexer.lexeme
 		{
-			let mut values = Vec::new();
-			values.push(value);
-
-			lexer.advance();
-
-			values.push(Self::inner_parse(lexer)?);
-
-			if operator.is_associative()
-			{
-				loop
-				{
-					if let Lexeme::BinaryOperator(next_operator) = lexer.lexeme
-					{
-						if next_operator != operator
-						{
-							return Err(ParseError::ExpectedElement{element: "found different operator in same operation", slice: lexer.slice().to_string()});
-						}
-
-						lexer.advance()
-					}
-					else
-					{
-						break;
-					}
-
-					values.push(Self::inner_parse(lexer)?);
-				}
-				
-				lexer.advance();
-			}
-			
-			return Ok(Value::Operation{operator, values});
+			return Ok(Value::Operation(Operation::parse_after(lexer, value, operator, false)?));
 		}
 
 		Ok(value)
