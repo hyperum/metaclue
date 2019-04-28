@@ -12,11 +12,11 @@ impl Invocation
 		let mut values = Vec::<Value>::new();
 		let mut map = Option::<Value>::None;
 		
-		while lexer.lexeme != Lexeme::CloseInvocation
+		while lexer.token.lexeme != Lexeme::CloseInvocation
 		{
 			values.push(Value::inner_parse(lexer)?);
 
-			if lexer.lexeme == Lexeme::MapSuffix
+			if lexer.token.lexeme == Lexeme::MapSuffix
 			{
 				if map.is_some()
 				{

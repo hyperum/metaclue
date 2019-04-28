@@ -7,7 +7,7 @@ pub struct Operation {operator: BinaryOperator, values: Vec<Value>}
 
 impl Operation
 {
-	pub fn parse_after (lexer: &mut Lexer, last: Value, operator: BinaryOperator, is_closed: bool) -> ParseResult<Self>
+	pub fn parse_after (lexer: &mut Lexer, last: Value, operator: BinaryOperator) -> ParseResult<Self>
 	{
 		lexer.advance();
 
@@ -17,9 +17,9 @@ impl Operation
 
 		if operator.is_associative()
 		{
-			while lexer.lexeme != Lexeme::None && if is_closed {lexer.lexeme != Lexeme::CloseValue} else {true}
+			while lexer.token.lexeme != Lexeme::None
 			{
-				if let Lexeme::BinaryOperator(next_operator) = lexer.lexeme
+				if let Lexeme::BinaryOperator(next_operator) = lexer.token.lexeme
 				{
 					if next_operator != operator
 					{
@@ -36,8 +36,6 @@ impl Operation
 				values.push(Value::inner_parse(lexer)?);
 			}
 		}
-		
-		if is_closed {lexer.advance();} //TODO: error on unexpected end of input.
 
 		return Ok(Self{operator, values});
 	}

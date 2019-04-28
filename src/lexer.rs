@@ -54,11 +54,18 @@ impl BinaryOperator
 
 use std::ops::Range;
 
+#[derive(Clone)]
+pub struct Token
+{
+	pub lexeme: Lexeme,
+	pub range: Range<usize>,
+}
+
 pub struct Lexer <'a>
 {
 	source: &'a [u8],
-	pub lexeme: Lexeme,
-	pub range: Range<usize>,
+	pub token: Token,
+	pub next_token: Token,
 }
 
 impl <'a> Lexer<'a>
@@ -68,51 +75,54 @@ impl <'a> Lexer<'a>
 		let mut lexer = Lexer
 		{
 			source: source.as_bytes(),
-			lexeme: Lexeme::None,
-			range: 0..0,
+			token: Token{lexeme: Lexeme::None, range: 0..0},
+			next_token: Token{lexeme: Lexeme::None, range: 0..0},
 		};
+		lexer.advance();
 		lexer.advance();
 		lexer
 	}
 
 	pub fn advance (&mut self)
 	{
+		self.token = self.next_token.clone();
+
 		use Lexeme::*;
 		use self::BinaryOperator::*;
 
-		if self.range.end == self.source.len()
+		if self.next_token.range.end == self.source.len()
 		{
-			self.lexeme = None;
+			self.next_token.lexeme = None;
 			return;
 		}
 
-		if self.source.get(self.range.end) == Some(&b' ')
+		if self.source.get(self.next_token.range.end) == Some(&b' ')
 		{
-			self.range.end += 1;
+			self.next_token.range.end += 1;
 		}
 
-		self.range.start = self.range.end;
+		self.next_token.range.start = self.next_token.range.end;
 
-		if let Some(next) = self.source.get(self.range.end)
+		if let Some(next) = self.source.get(self.next_token.range.end)
 		{
-			self.range.end += 1;
+			self.next_token.range.end += 1;
 
-			self.lexeme = match *next
+			self.next_token.lexeme = match *next
 			{
 				b'~' =>
 				{
-					if let Some(peek) = self.source.get(self.range.end)
+					if let Some(peek) = self.source.get(self.next_token.range.end)
 					{
 						match *peek
 						{
 							b'&' =>
 							{
-								self.range.end += 1;
+								self.next_token.range.end += 1;
 								BinaryOperator(AlternativeDenial)
 							},
 							b'/' =>
 							{
-								self.range.end += 1;
+								self.next_token.range.end += 1;
 								BinaryOperator(JointDenial)
 							},
 							_ => Negation
@@ -132,11 +142,11 @@ impl <'a> Lexer<'a>
 				b'}' => CloseInvocation,
 				next if next.is_ascii_alphanumeric() =>
 				{
-					while let Some(peek) = self.source.get(self.range.end)
+					while let Some(peek) = self.source.get(self.next_token.range.end)
 					{
 						if peek.is_ascii_alphanumeric() || *peek == '-' as u8
 						{
-							self.range.end += 1;
+							self.next_token.range.end += 1;
 						}
 						else {break;}
 					}
@@ -144,7 +154,7 @@ impl <'a> Lexer<'a>
 				}
 				b'+' =>
 				{
-					if let Some(peek) = self.source.get(self.range.end)
+					if let Some(peek) = self.source.get(self.next_token.range.end)
 					{
 						if b'>' == *peek
 						{
@@ -162,27 +172,27 @@ impl <'a> Lexer<'a>
 				}
 				b'-' =>
 				{
-					if let Some(peek) = self.source.get(self.range.end)
+					if let Some(peek) = self.source.get(self.next_token.range.end)
 					{
 						match *peek
 						{
 							b'>' =>
 							{
-								self.range.end += 1;
+								self.next_token.range.end += 1;
 								BinaryOperator(Implication)
 							},
 							b'<' =>
 							{
-								self.range.end += 1;
+								self.next_token.range.end += 1;
 								BinaryOperator(ConverseNonimplication)
 							},
 							_ =>
 							{
-								while let Some(peek) = self.source.get(self.range.end)
+								while let Some(peek) = self.source.get(self.next_token.range.end)
 								{
 									if peek.is_ascii_alphanumeric() || *peek == '-' as u8
 									{
-										self.range.end += 1;
+										self.next_token.range.end += 1;
 									}
 									else {break;}
 								}
@@ -194,18 +204,18 @@ impl <'a> Lexer<'a>
 				},
 				b'<' =>
 				{
-					if let Some(peek) = self.source.get(self.range.end)
+					if let Some(peek) = self.source.get(self.next_token.range.end)
 					{
 						match *peek
 						{
 							b'-' =>
 							{
-								self.range.end += 1;
+								self.next_token.range.end += 1;
 								BinaryOperator(ConverseImplication)
 							},
 							b'>' =>
 							{
-								self.range.end += 1;
+								self.next_token.range.end += 1;
 								BinaryOperator(Biconditional)
 							},
 							_ => Error,
@@ -215,18 +225,18 @@ impl <'a> Lexer<'a>
 				},
 				b'>' =>
 				{
-					if let Some(peek) = self.source.get(self.range.end)
+					if let Some(peek) = self.source.get(self.next_token.range.end)
 					{
 						match *peek
 						{
 							b'-' =>
 							{
-								self.range.end += 1;
+								self.next_token.range.end += 1;
 								BinaryOperator(Nonimplication)
 							},
 							b'<' =>
 							{
-								self.range.end += 1;
+								self.next_token.range.end += 1;
 								BinaryOperator(ExclusiveDisjunction)
 							},
 							_ => Error,
@@ -246,19 +256,6 @@ impl <'a> Lexer<'a>
 
 	pub fn slice (&self) -> &'a str
 	{
-		unsafe {std::str::from_utf8_unchecked(self.source.get_unchecked(self.range.clone()))} //TODO: handle UTF8 in advance() to make this safe.
-	}
-
-	pub fn skip_newlines (&mut self) -> usize
-	{
-		let mut count = 0;
-
-		while Some(&b'\n') == self.source.get(self.range.end)
-		{
-			self.range.end += 1;
-			count += 1;
-		}
-		
-		return count;
+		unsafe {std::str::from_utf8_unchecked(self.source.get_unchecked(self.token.range.clone()))} //TODO: handle UTF8 in advance() to make this safe.
 	}
 }
