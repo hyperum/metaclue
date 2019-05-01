@@ -1,7 +1,5 @@
-mod operation;
-pub use operation::Operation;
-mod invocation;
-pub use invocation::Invocation;
+use crate::operation::Operation;
+use crate::invocation::Invocation;
 
 use crate::parse::{ParseError, ParseResult};
 use crate::lexer::{Lexer, Lexeme, BinaryOperator};
@@ -16,13 +14,13 @@ pub enum Value
 
 impl Value
 {
-	pub fn is_initial (lexeme: Lexeme) -> bool
+	pub fn initializes (lexer: &Lexer) -> bool
 	{
 		use Lexeme::*;
-		lexeme == Tag || lexeme == OpenInvocation || lexeme == OpenValue
+		lexer.token.lexeme == Tag || lexer.token.lexeme == OpenInvocation || lexer.token.lexeme == OpenValue
 	}
 
-	fn inner_parse (lexer: &mut Lexer) -> ParseResult<Self>
+	pub fn inner_parse (lexer: &mut Lexer) -> ParseResult<Self>
 	{
 		use Lexeme::*;
 

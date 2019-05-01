@@ -11,7 +11,7 @@ pub struct Assignment
 
 impl Assignment
 {
-	pub fn has_initial (lexer: &mut Lexer) -> bool
+	pub fn initializes (lexer: &Lexer) -> bool
 	{
 		lexer.token.lexeme == Lexeme::Tag && lexer.next_token.lexeme == Lexeme::Is
 	}
@@ -24,16 +24,11 @@ impl Assignment
 
 		lexer.advance();
 
-		match lexer.token.lexeme
+		if Value::initializes(lexer)
 		{
-			lexeme if Value::is_initial(lexeme) =>
-			{
-				return Ok(Assignment{tag, value: Value::parse(lexer)?});
-			},
-			_ =>
-			{
-				return Err(ParseError::ExpectedElement{element: "nonempty assignment", slice: String::from(lexer.slice())})
-			}
+			return Ok(Assignment{tag, value: Value::parse(lexer)?});
 		}
+
+		Err(ParseError::ExpectedElement{element: "nonempty assignment", slice: String::from(lexer.slice())})
 	}
 }

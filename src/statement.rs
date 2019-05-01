@@ -12,23 +12,22 @@ pub enum Statement
 
 impl Statement
 {
+	pub fn initializes (lexer: &mut Lexer) -> bool
+	{
+		Value::initializes(lexer) | Assignment::initializes(lexer)
+	}
+
 	pub fn parse (lexer: &mut Lexer) -> ParseResult<Self>
 	{
-		if Assignment::has_initial(lexer)
+		if Assignment::initializes(lexer)
 		{
 			return Ok(Self::Assignment(Assignment::parse(lexer)?));
 		}
-
-		match lexer.token.lexeme
+		else if Value::initializes(lexer)
 		{
-			lexeme if Value::is_initial(lexeme) =>
-			{
-				Ok(Self::Value(Value::parse(lexer)?))
-			}
-			_ =>
-			{
-				Err(ParseError::ExpectedElement{element: "statement", slice: String::from(lexer.slice())})
-			}
+			return Ok(Self::Value(Value::parse(lexer)?));
 		}
+
+		Err(ParseError::ExpectedElement{element: "statement", slice: String::from(lexer.slice())})
 	}
 }
