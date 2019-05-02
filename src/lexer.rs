@@ -158,6 +158,7 @@ impl <'a> Lexer<'a>
 					{
 						if b'>' == *peek
 						{
+							self.next_token.range.end += 1;
 							To
 						}
 						else

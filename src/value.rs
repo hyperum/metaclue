@@ -10,6 +10,7 @@ pub enum Value
 	Tag (String),
 	Invocation (Invocation),
 	Operation (Operation),
+	Implicit,
 }
 
 impl Value
